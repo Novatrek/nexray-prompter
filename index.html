@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXRAY Prompter</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0e0f11">
+  <link rel="icon" type="image/png" href="build/icon-64.png">
+  <link rel="apple-touch-icon" href="build/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="NEXRAY Prompter">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="editor" class="view">
+    <aside id="library" aria-label="Skriptbibliothek">
+      <div class="row">
+        <h2>Skripte</h2>
+        <button id="newScript" type="button" class="crown" title="Neues Skript anlegen">+ Skript</button>
+        <button id="newFolder" type="button" class="crown" title="Neuen Ordner anlegen">+ Ordner</button>
+        <button id="history" type="button" class="crown" title="Gespeicherte Versionen des geöffneten Skripts mit Datum und Uhrzeit">Historie</button>
+      </div>
+      <div id="libraryList"></div>
+    </aside>
+
+    <div id="editorMain">
+    <header>
+      <div>
+        <h1>NEXRAY Prompter</h1>
+        <p>Der Text läuft mit, während du sprichst.</p>
+      </div>
+      <div class="head-controls">
+        <select id="uiLang" aria-label="Sprache der Oberfläche"></select>
+        <div class="segmented" role="group" aria-label="Version">
+          <button id="planFree" type="button">Gratis</button>
+          <button id="planPro" type="button"><span class="crown-icon" aria-hidden="true"></span>Pro</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="tools" class="row">
+      <button id="undo" type="button" class="arrow" title="Rückgängig (Strg+Z)" aria-label="Rückgängig">↶</button>
+      <button id="redo" type="button" class="arrow" title="Wiederholen (Strg+Y)" aria-label="Wiederholen">↷</button>
+      <span class="muted">Markieren:</span>
+      <button type="button" class="dot crown c-rot" data-color="rot" title="Auswahl rot markieren" aria-label="Rot"></button>
+      <button type="button" class="dot crown c-gelb" data-color="gelb" title="Auswahl gelb markieren" aria-label="Gelb"></button>
+      <button type="button" class="dot crown c-gruen" data-color="grün" title="Auswahl grün markieren" aria-label="Grün"></button>
+      <button type="button" class="dot crown c-blau" data-color="blau" title="Auswahl blau markieren" aria-label="Blau"></button>
+      <button type="button" class="dot crown c-tuerkis" data-color="türkis" title="Auswahl türkis markieren" aria-label="Türkis"></button>
+      <button type="button" class="dot crown c-violett" data-color="violett" title="Auswahl violett markieren" aria-label="Violett"></button>
+      <button id="quote" type="button" class="crown" data-color="zitat" title="Auswahl als Zitat kursiv setzen"><i>Zitat</i></button>
+      <span class="menu-wrap">
+        <button id="cue" type="button" class="crown" aria-haspopup="true" aria-expanded="false" title="Hinweis einfügen, der angezeigt, aber nicht gesprochen wird">Regieanweisung ▾</button>
+        <div id="cueMenu" class="menu" hidden></div>
+      </span>
+      <span class="menu-wrap">
+        <button id="speaker" type="button" class="crown" aria-haspopup="true" aria-expanded="false" title="Markiert, ab wo welcher Sprecher dran ist">Sprecher ▾</button>
+        <div id="speakerMenu" class="menu" hidden></div>
+      </span>
+      <button id="section" type="button" class="crown" title="Beginnt einen Abschnitt mit eigener Überschrift und geplanter Dauer">Abschnitt</button>
+      <button id="clean" type="button" title="Alle Farben, Zitate und Regieanweisungen aus dem Skript entfernen">Text säubern</button>
+    </div>
+
+    <div id="scriptWrap">
+      <pre id="scriptHighlight" aria-hidden="true"></pre>
+      <textarea id="script" spellcheck="false" placeholder="Skript hier einfügen …"></textarea>
+    </div>
+
+    <div class="row">
+      <label class="file" title="Text, Word (.docx), OpenDocument (.odt) oder PDF">
+        Datei laden
+        <input id="file" type="file">
+      </label>
+      <button id="sample" type="button">Beispieltext</button>
+      <button id="clear" type="button" title="Den gesamten Text entfernen">Skript löschen</button>
+      <button id="saveAs" type="button" class="crown" title="Den offenen Text unter einem Namen in der Skripte-Liste ablegen">Skript speichern unter</button>
+      <span id="count" class="muted"></span>
+      <button id="open" type="button" class="primary">Prompter öffnen</button>
+    </div>
+
+    <p id="fileNote" class="notice" hidden></p>
+    <p id="support" class="notice" hidden></p>
+    </div>
+  </main>
+
+  <section id="prompter" class="view" hidden>
+    <div id="stage">
+      <video id="camera" autoplay muted playsinline></video>
+      <div id="cameraShade"></div>
+      <div id="recBadge" role="status" hidden></div>
+      <div id="savedToast" role="status" hidden>
+        <strong id="savedTitle">Aufnahme gespeichert</strong>
+        <span id="savedName"></span>
+        <span id="savedFolder" class="muted" hidden></span>
+        <span id="savedPlace" class="muted">Im Download-Ordner des Browsers</span>
+        <span class="row">
+          <button id="savedOpen" type="button" class="primary" hidden>Ordner öffnen</button>
+          <button id="savedClose" type="button">Schließen</button>
+        </span>
+      </div>
+      <div id="marker"></div>
+      <div class="stopsign left" aria-hidden="true"><span>PAUSE</span></div>
+      <div class="stopsign right" role="status"><span>PAUSE</span></div>
+      <div id="speakerBadge" hidden></div>
+      <div id="schedule" hidden></div>
+      <div id="text"></div>
+      <div id="scrubber" title="Schnell durch den Text schieben" hidden>
+        <div id="scrubTrack"><div id="scrubFill"></div><div id="scrubThumb"></div></div>
+        <span id="scrubPercent">0 %</span>
+      </div>
+      <button id="pureExit" type="button" title="Leiste wieder zeigen (Esc)">Leiste zeigen</button>
+    </div>
+
+    <footer id="bar">
+      <button id="back" type="button" title="Zurück zum Skript (Esc)">Skript</button>
+      <button id="toggle" type="button" class="primary" title="Start/Pause (Leertaste)">Start</button>
+      <button id="restart" type="button" title="Zum Anfang (Pos1)">Anfang</button>
+      <button id="resume" type="button" title="Zurück zur zuletzt gelesenen Stelle (Eingabetaste)">Lesestelle</button>
+
+      <label id="modeLabel" class="crown" title="Gratis: Mitlaufen per Stimme 5 Minuten pro Sitzung. Pro: unbegrenzt.">Modus
+        <select id="mode">
+          <option value="voice">Stimme</option>
+          <option value="auto">Festes Tempo</option>
+        </select>
+      </label>
+      <label id="speedLabel" title="Tempo 1 bis 10 (Tasten + und -)">Tempo
+        <input id="speed" type="range" min="1" max="10" step="1">
+        <span id="speedValue"></span>
+      </label>
+      <label id="followLabel" hidden title="Wie zügig der Text der Stimme folgt: 1 ruhig, 5 direkt (Tasten + und -)">Tempo
+        <input id="follow" type="range" min="1" max="5" step="1">
+        <span id="followValue"></span>
+      </label>
+      <label>Sprache
+        <select id="lang">
+          <option value="de-DE">Deutsch</option>
+          <option value="en-US">Englisch</option>
+          <option value="fr-FR">Französisch</option>
+          <option value="es-ES">Spanisch</option>
+          <option value="it-IT">Italienisch</option>
+        </select>
+      </label>
+      <label>Mikrofon
+        <select id="mic"><option value="">Systemstandard</option></select>
+        <span id="meter" title="Eingangspegel"><span id="level"></span></span>
+      </label>
+      <label>Schrift
+        <input id="size" type="range" min="24" max="110" step="2">
+      </label>
+      <label>Breite
+        <input id="width" type="range" min="40" max="100" step="5">
+      </label>
+      <button id="line" type="button" title="Schnellwahl: Lesezeile oben oder in der Bildmitte"></button>
+      <label title="Höhe der Trennlinie zwischen gelesenem und kommendem Text">Höhe
+        <input id="linePos" type="range" min="0" max="70" step="5">
+      </label>
+      <span class="mirror-box">Spiegeln
+        <label class="check" title="Links und rechts vertauschen – für ein Teleprompter-Glas"><input id="mirror" type="checkbox"> ↔ horizontal</label>
+        <label class="check" title="Oben und unten vertauschen – etwa für einen Monitor, der über dem Glas hängt"><input id="flip" type="checkbox"> ↕ vertikal</label>
+      </span>
+      <label id="meLabel" hidden title="Hebt deinen Teil hervor und dunkelt die anderen Sprecher ab">Meine Rolle
+        <select id="me"></select>
+      </label>
+      <button id="pure" type="button" title="Nur den Text zeigen, bildschirmfüllend und ohne Leiste – etwa für ein Tablet unter einem Teleprompter-Glas. Tippen startet und pausiert.">Vollbild</button>
+
+      <span id="timerBox">
+        <span id="timer" title="Redezeit und geschätzte Restzeit">00:00</span>
+        <label>Ziel (Min.)
+          <input id="target" type="number" min="0" max="240" step="1" placeholder="–">
+        </label>
+      </span>
+      <button id="timerLocked" type="button" class="crown" title="Redezeit, Restzeit und Zielzeit (Pro)">Timer</button>
+      <button id="coachOpen" type="button" title="Sprech-Coach: Tempo, Füllwörter, Pausen und ausgelassene Stellen deines Durchlaufs">Auswertung</button>
+
+      <button id="cameraToggle" type="button" class="crown" title="Zeigt dein Kamerabild hinter dem Text">Kamera</button>
+      <select id="cameraSelect" aria-label="Kamera wählen" hidden></select>
+      <button id="record" type="button" class="crown" title="Nimmt in eine Datei auf, je nach Auswahl Bild und Ton oder nur den Ton. Der Prompter-Text ist in der Aufnahme nicht zu sehen.">Aufnahme</button>
+      <select id="recordMode" aria-label="Art der Aufnahme">
+        <option value="video">Video und Ton</option>
+        <option value="audio">Nur Ton</option>
+      </select>
+      <button id="recFolder" type="button" hidden title="Ordner mit den Aufnahmen öffnen">Aufnahmen</button>
+      <button id="second" type="button" class="crown" title="Denselben Prompter in einem zweiten Fenster zeigen, etwa auf einem weiteren Monitor">Zweiter Monitor</button>
+      <button id="secondMore" type="button" hidden title="Noch eine Anzeige öffnen, etwa für einen weiteren Sprecher mit eigener Rolle">+ Anzeige</button>
+      <span id="floatBox" hidden>
+        <button id="float" type="button" class="crown" title="Fenster halbtransparent und immer im Vordergrund halten">Schwebefenster</button>
+        <span id="floatOptions" hidden>
+          <label>Deckkraft
+            <input id="opacity" type="range" min="30" max="100" step="5">
+          </label>
+          <label class="check" title="Das Fenster erscheint nicht in Bildschirmfreigaben und Aufnahmen"><input id="protect" type="checkbox"> Bei Freigabe unsichtbar</label>
+          <button id="through" type="button" title="Mausklicks gehen durch den Textbereich zum Programm dahinter. Die Leiste bleibt bedienbar; ein zweiter Klick oder Strg+Umschalt+K schaltet es wieder aus.">Klicks durchlassen</button>
+        </span>
+      </span>
+
+      <span id="status" class="muted" aria-live="polite"></span>
+    </footer>
+  </section>
+
+  <dialog id="upgrade">
+    <form method="dialog">
+      <h2><span class="crown-icon" aria-hidden="true"></span>NEXRAY Prompter Pro</h2>
+      <p id="upgradeReason" class="notice" hidden></p>
+      <div id="licenseActive" hidden>
+        <p class="notice license-state"><strong id="licenseName"></strong></p>
+        <p class="muted"><span id="licenseChecked"></span> <span id="licenseEmail" class="license-email"></span></p>
+        <button id="licenseRemove" type="button" class="danger">Lizenz auf diesem Gerät entfernen</button>
+      </div>
+      <div id="licenseOffer">
+      <ul>
+        <li>Mitlaufen per Stimme ohne Zeitlimit</li>
+        <li>Farbakzente und kursive Zitate</li>
+        <li>Regieanweisungen, die nicht mitgesprochen werden</li>
+        <li>Timer mit Restzeit und Zielzeit</li>
+        <li>Skriptbibliothek mit Ordnern und Versionen</li>
+        <li>Zweitanzeige auf einem weiteren Monitor</li>
+        <li>Bis zu sechs Sprecher mit farbigem Einsatz</li>
+        <li>Zeitplan je Abschnitt mit Ampel</li>
+        <li>Kamerabild im Prompter und Videoaufnahme</li>
+        <li>Schwebefenster, unsichtbar bei Bildschirmfreigabe (Desktop-App)</li>
+        <li>Sprech-Coach: Tempo, Füllwörter, Pausen und Verlauf</li>
+      </ul>
+      <div class="plans">
+        <label class="plan">
+          <input type="radio" name="billing" value="month">
+          <span class="plan-name">Monatlich</span>
+          <span id="priceMonth" class="plan-price"></span>
+          <span class="muted">monatlich kündbar</span>
+        </label>
+        <label class="plan">
+          <input type="radio" name="billing" value="year" checked>
+          <span class="plan-name">Jährlich <span id="saving" class="badge"></span></span>
+          <span id="priceYear" class="plan-price"></span>
+          <span id="priceYearNote" class="muted"></span>
+        </label>
+      </div>
+      <div class="row">
+        <button id="buyPro" type="button" class="primary">Jetzt kaufen</button>
+        <span id="buyNote" class="muted" hidden>Der Kauf startet in Kürze.</span>
+      </div>
+      <h3>Schon gekauft? Lizenzschlüssel eingeben</h3>
+      <div class="license-row">
+        <input id="licenseKey" type="text" autocomplete="off" spellcheck="false" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" aria-label="Lizenzschlüssel">
+        <button id="licenseActivate" type="button">Freischalten</button>
+      </div>
+      <p class="muted">Zum Freischalten wird einmal kurz Internet benötigt. Danach läuft Pro auch ohne Internet; ist Internet da, prüft das Programm die Lizenz gelegentlich im Hintergrund.</p>
+      </div>
+      <p id="licenseMsg" class="license-msg" aria-live="polite"></p>
+      <div class="row">
+        <button value="cancel">Schließen</button>
+        <button id="testUnlock" value="unlock" class="primary" hidden>Pro zum Testen freischalten</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="coach">
+    <form method="dialog">
+      <h2>Sprech-Coach</h2>
+      <p class="muted">Berechnet auf deinem Gerät – nichts verlässt den Rechner.</p>
+      <div id="coachBody"></div>
+      <fieldset id="coachAsk" hidden>
+        <legend>Das soll ChatGPT liefern</legend>
+        <div id="coachWishes"></div>
+      </fieldset>
+      <p id="coachCopied" class="notice" hidden></p>
+      <div class="row">
+        <button id="coachAi" type="button" class="crown" title="Öffnet ChatGPT mit deiner Auswertung und den angehakten Wünschen. Erst dann verlässt etwas dein Gerät.">Mit ChatGPT vertiefen</button>
+        <button value="close" class="primary">Schließen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="ask">
+    <form method="dialog">
+      <p id="askLabel"></p>
+      <input id="askInput" type="text" autocomplete="off">
+      <div class="row">
+        <button id="askCancel" type="button">Abbrechen</button>
+        <button id="askOk" class="primary">OK</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="sectionDialog">
+    <form method="dialog">
+      <h2>Abschnitt einfügen</h2>
+      <label class="field">Titel
+        <input id="sectionTitle" type="text" autocomplete="off" maxlength="40" placeholder="z. B. Einleitung">
+      </label>
+      <div class="field">Geplante Dauer (freiwillig)
+        <div class="row">
+          <input id="sectionMinutes" type="number" min="0" max="180" placeholder="Min." aria-label="Minuten">
+          <input id="sectionSeconds" type="number" min="0" max="59" placeholder="Sek." aria-label="Sekunden">
+        </div>
+      </div>
+      <div class="row">
+        <button id="sectionCancel" type="button">Abbrechen</button>
+        <button class="primary">Einfügen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="speakerDialog">
+    <form method="dialog">
+      <h2>Sprecher benennen</h2>
+      <label class="field sp-1"><span class="sp-label">1</span><input id="speakerName1" type="text" autocomplete="off" maxlength="24"></label>
+      <label class="field sp-2"><span class="sp-label">2</span><input id="speakerName2" type="text" autocomplete="off" maxlength="24"></label>
+      <label class="field sp-3"><span class="sp-label">3</span><input id="speakerName3" type="text" autocomplete="off" maxlength="24"></label>
+      <label class="field sp-4"><span class="sp-label">4</span><input id="speakerName4" type="text" autocomplete="off" maxlength="24"></label>
+      <label class="field sp-5"><span class="sp-label">5</span><input id="speakerName5" type="text" autocomplete="off" maxlength="24"></label>
+      <label class="field sp-6"><span class="sp-label">6</span><input id="speakerName6" type="text" autocomplete="off" maxlength="24"></label>
+      <div class="row">
+        <button id="speakerCancel" type="button">Abbrechen</button>
+        <button class="primary">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="saveDialog">
+    <form method="dialog">
+      <h2>Skript speichern unter</h2>
+      <label class="field">Speichern in
+        <select id="saveTargets"></select>
+      </label>
+      <label class="field">Name
+        <input id="saveTitle" type="text" autocomplete="off">
+      </label>
+      <label class="field">Ablegen in Ordner
+        <select id="saveFolder"></select>
+      </label>
+      <p id="saveHint" class="muted"></p>
+      <div class="row">
+        <button id="saveCancel" type="button">Abbrechen</button>
+        <button class="primary">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="scriptDialog">
+    <form method="dialog">
+      <h2>Skript verwalten</h2>
+      <label class="field">Titel
+        <input id="scriptTitle" type="text" autocomplete="off">
+      </label>
+      <label class="field">Ablegen in Ordner
+        <select id="scriptFolder"></select>
+      </label>
+      <h3>Historie</h3>
+      <div id="versionList"></div>
+      <button id="clearHistory" type="button" class="danger" hidden>Gesamte Historie löschen</button>
+      <div class="row">
+        <button value="delete" class="danger">Skript löschen</button>
+        <button value="snapshot">Version speichern</button>
+        <button value="save" class="primary">Fertig</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

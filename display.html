@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXRAY Prompter – Zweitanzeige</title>
+  <link rel="icon" type="image/png" href="build/icon-64.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="display">
+  <div id="stage">
+    <div id="marker" hidden></div>
+    <div class="stopsign left" aria-hidden="true"><span>PAUSE</span></div>
+    <div class="stopsign right" role="status"><span>PAUSE</span></div>
+    <div id="speakerBadge" hidden></div>
+    <div id="schedule" hidden></div>
+    <div id="text"></div>
+    <p id="idle">Warte auf den Prompter im Hauptfenster …</p>
+  </div>
+
+  <div id="displayBar">
+    <label title="Hebt auf dieser Anzeige den Teil eines Sprechers hervor und dunkelt die anderen ab">Rolle
+      <select id="displayRole"></select>
+    </label>
+    <button id="displayMirror" type="button" title="Nur diese Anzeige spiegeln, etwa für ein Teleprompter-Glas">Spiegeln ↔</button>
+    <button id="displayFlip" type="button" title="Nur diese Anzeige oben und unten vertauschen">Spiegeln ↕</button>
+    <button id="displayFull" type="button" title="Vollbild ein- und ausschalten (F11, Esc beendet)">Vollbild</button>
+    <span id="displayFloatBox" hidden>
+      <button id="displayFloat" type="button" title="Diese Anzeige halbtransparent und immer im Vordergrund halten">Schweben</button>
+      <span id="displayFloatOptions" hidden>
+        <label>Deckkraft
+          <input id="displayOpacity" type="range" min="30" max="100" step="5">
+        </label>
+        <label class="check" title="Diese Anzeige erscheint nicht in Bildschirmfreigaben und Aufnahmen"><input id="displayProtect" type="checkbox"> Bei Freigabe unsichtbar</label>
+        <button id="displayThrough" type="button" title="Mausklicks gehen durch den Textbereich zum Programm dahinter. Die Leiste bleibt bedienbar.">Klicks durchlassen</button>
+      </span>
+    </span>
+    <button id="displayClose" type="button" title="Zweitanzeige schließen">Schließen</button>
+  </div>
+
+  <script type="module" src="display.js"></script>
+</body>
+</html>
