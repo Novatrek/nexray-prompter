@@ -1,6 +1,6 @@
 // Hält die Web-App auf Tablets auch ohne Internet startbereit.
 // Erst das Netz (damit immer die neueste Fassung kommt), ohne Netz die zuletzt geladene.
-const CACHE = 'nexray-prompter-v3';
+const CACHE = 'nexray-prompter-v4';
 const FILES = [
   './', 'index.html', 'display.html', 'style.css', 'manifest.webmanifest',
   'app.js', 'align.js', 'camera.js', 'dialogs.js', 'display.js', 'i18n.js', 'import.js',

@@ -572,12 +572,23 @@ function render(result) {
   );
   body.append(tiles);
 
+  // Kennzahlen: Gratis sieht, wie viele es sind – wo genau und wie es besser geht, zeigt Pro.
+  const countTiles = [
+    result.local
+      ? tile('Füllwörter', String(result.fillers), `${decimal(result.fillersPerMinute)} pro Minute`,
+        result.fillersPerMinute > 3 ? ['häufig', 'warn'] : result.fillersPerMinute <= 1 ? ['selten', 'ok'] : ['mittel', 'ok'])
+      : tile('Füllwörter', '–', 'nur in der Desktop-App'),
+    tile('Längere Pausen', String(result.gaps.length), 'über 3 Sekunden', result.gaps.length > 3 ? ['oft', 'warn'] : null),
+    tile('Ausgelassen', String(result.skippedWords), 'Wörter', result.skippedWords ? ['prüfen', 'warn'] : ['vollständig', 'ok']),
+  ];
+
   if (!isPro()) {
+    tiles.append(...countTiles);
     const locked = node('div', 'coach-locked');
     const title = node('p', 'coach-locked-title');
-    title.append(node('span', 'crown-icon'), node('span', '', 'Die vollständige Auswertung gehört zu Pro:'));
+    title.append(node('span', 'crown-icon'), node('span', '', 'Wo genau – und wie du besser wirst – zeigt Pro:'));
     const list = node('ul');
-    for (const item of ['Verständlichkeit in fünf Bereichen (1–5)', 'Füllwörter', 'Pausen und Hänger', 'Ausgelassene Stellen', 'Abschnitte im Zeitplan', 'Sprachniveau (A1–C2) passend zum Publikum', 'Verlauf über alle Durchläufe', 'Übergabe an ChatGPT']) {
+    for (const item of ['Welche Füllwörter an welcher Stelle', 'Wo die Pausen und Hänger waren', 'Welche Stellen du ausgelassen hast', 'Verständlichkeit in fünf Bereichen (1–5)', 'Abschnitte im Zeitplan', 'Sprachniveau (A1–C2) passend zum Publikum', 'Verlauf über alle Durchläufe', 'Übergabe an ChatGPT']) {
       list.append(node('li', '', item));
     }
     const button = node('button', 'primary', 'Pro ansehen');
@@ -596,14 +607,7 @@ function render(result) {
   showClarity(card, result);
   body.prepend(...card.childNodes);
 
-  tiles.append(
-    result.local
-      ? tile('Füllwörter', String(result.fillers), `${decimal(result.fillersPerMinute)} pro Minute`,
-        result.fillersPerMinute > 3 ? ['häufig', 'warn'] : result.fillersPerMinute <= 1 ? ['selten', 'ok'] : ['mittel', 'ok'])
-      : tile('Füllwörter', '–', 'nur in der Desktop-App'),
-    tile('Längere Pausen', String(result.gaps.length), 'über 3 Sekunden', result.gaps.length > 3 ? ['oft', 'warn'] : null),
-    tile('Ausgelassen', String(result.skippedWords), 'Wörter', result.skippedWords ? ['prüfen', 'warn'] : ['vollständig', 'ok']),
-  );
+  tiles.append(...countTiles);
   if (result.duration > 60) {
     body.append(node('p', 'coach-line muted', `Tempo am Anfang ${result.startWpm}, am Ende ${result.endWpm} Wörter pro Minute`));
   }

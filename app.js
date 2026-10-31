@@ -107,7 +107,13 @@ let useTrack = true;
 let scrollTarget = 0;
 let lastFrame = 0;
 let elapsed = 0;
-let freeVoiceUsed = 0;
+// Gratis-Minuten mit Sprachsteuerung, pro Kalendertag gezählt und gespeichert.
+const today = () => new Date().toLocaleDateString('sv');
+let freeVoice = load('vp.freeVoice', { day: '', used: 0 });
+function freeVoiceUsed() {
+  if (freeVoice.day !== today()) freeVoice = { day: today(), used: 0 };
+  return freeVoice.used;
+}
 let shownSecond = -1;
 let browsing = false;
 let userPaused = false;
@@ -1028,10 +1034,13 @@ function tick(dt) {
   if (!running) return;
   elapsed += dt;
   if (settings.mode === 'voice' && !isPro()) {
-    freeVoiceUsed += dt;
-    if (freeVoiceUsed >= FREE_VOICE_SECONDS) {
-      stop('Gratis-Zeit für diese Sitzung aufgebraucht');
-      openUpgrade(`In der Gratisversion läuft der Text ${FREE_VOICE_SECONDS / 60} Minuten pro Sitzung per Stimme mit. Festes Tempo bleibt unbegrenzt.`);
+    const before = Math.floor(freeVoiceUsed());
+    freeVoice.used += dt;
+    if (Math.floor(freeVoice.used) !== before) save('vp.freeVoice', freeVoice);
+    if (freeVoice.used >= FREE_VOICE_SECONDS) {
+      save('vp.freeVoice', freeVoice);
+      stop('Gratis-Zeit für heute aufgebraucht');
+      openUpgrade(`In der Gratisversion läuft der Text ${FREE_VOICE_SECONDS / 60} Minuten pro Tag per Stimme mit. Festes Tempo bleibt unbegrenzt.`);
     }
   }
   if (Math.floor(elapsed) !== shownSecond) {
@@ -1263,8 +1272,8 @@ function stopListening() {
 function start() {
   if (running || !words.length) return;
   showPaused(false);
-  if (settings.mode === 'voice' && !isPro() && freeVoiceUsed >= FREE_VOICE_SECONDS) {
-    openUpgrade('Die Gratis-Zeit für diese Sitzung ist aufgebraucht.');
+  if (settings.mode === 'voice' && !isPro() && freeVoiceUsed() >= FREE_VOICE_SECONDS) {
+    openUpgrade('Die Gratis-Zeit mit Sprachsteuerung ist für heute aufgebraucht. Morgen geht es weiter – mit Pro unbegrenzt.');
     return;
   }
   if (pos >= words.length) setPosition(0);

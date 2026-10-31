@@ -6,7 +6,8 @@ import { LICENSE } from './license-config.js';
 
 const PRICE_MONTH = 7.99;
 const YEAR_DISCOUNT = 0.25;
-export const FREE_VOICE_SECONDS = 5 * 60;
+// Gratis: Sprachsteuerung 10 Minuten pro Tag (gezählt auf dem Gerät, ab Mitternacht wieder voll).
+export const FREE_VOICE_SECONDS = 10 * 60;
 
 // Öffentliche Lizenz-Schnittstelle von Polar (ohne Zugangsschlüssel, für Programme beim Kunden gedacht).
 const API = 'https://api.polar.sh/v1/customer-portal/license-keys/';
