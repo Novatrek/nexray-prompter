@@ -4,6 +4,7 @@ import { isPro, openUpgrade } from './plan.js';
 import { clock } from './schedule.js';
 import { t } from './i18n.js';
 import { load, save } from './storage.js';
+import { askConfirm } from './dialogs.js';
 
 // Bevorzugt MP4, weil es überall abspielbar ist; sonst WebM.
 const FORMATS = {
@@ -39,6 +40,12 @@ let report = () => {};
 let chosenMic = () => '';
 let scriptInfo = () => ({ title: 'NEXRAY Prompter', text: '' });
 let chosenCamera = '';
+// Grund, warum die Kamera zuletzt nicht starten konnte (z. B. 'NotReadableError').
+let cameraError = '';
+
+// Eine Webcam kann immer nur ein Programm gleichzeitig nutzen – meist Zoom oder Teams.
+const CAMERA_BUSY = 'Kamera belegt (z. B. von Zoom oder Teams) – für die Aufnahme „Nur Ton“ wählen oder eine zweite Kamera anschließen';
+const ASK_AUDIO = 'Die Kamera wird gerade von einem anderen Programm benutzt, zum Beispiel von Zoom oder Teams. Eine Kamera kann immer nur ein Programm gleichzeitig nutzen. Möchtest du stattdessen nur den Ton aufnehmen?';
 
 function errorText(error, device) {
   if (error.name === 'NotAllowedError') return `${device} nicht freigegeben (Browser oder Systemeinstellungen)`;
@@ -73,9 +80,11 @@ async function startCamera() {
       },
     });
   } catch (error) {
-    report(errorText(error, 'Kamera'));
+    cameraError = error.name;
+    report(error.name === 'NotReadableError' ? CAMERA_BUSY : errorText(error, 'Kamera'));
     return false;
   }
+  cameraError = '';
   video.srcObject = stream;
   document.body.classList.add('camera-on');
   cameraButton.textContent = 'Kamera: an';
@@ -105,7 +114,15 @@ async function startRecording() {
     return;
   }
   // Für eine Videoaufnahme wird die Kamera bei Bedarf selbst eingeschaltet.
-  if (withVideo && !stream && !(await startCamera())) return;
+  if (withVideo && !stream && !(await startCamera())) {
+    // Ist die Kamera belegt, gleich anbieten, nur den Ton aufzunehmen.
+    if (cameraError === 'NotReadableError' && (await askConfirm(ASK_AUDIO, 'Nur Ton aufnehmen'))) {
+      recordMode.value = 'audio';
+      save('vp.record.mode', 'audio');
+      startRecording();
+    }
+    return;
+  }
   const tracks = withVideo ? [...stream.getVideoTracks()] : [];
   try {
     const mic = chosenMic();

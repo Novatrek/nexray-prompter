@@ -1,19 +1,20 @@
-// Verkauf über Lemon Squeezy (Shop nexray.lemonsqueezy.com, Store 500874).
-// Stand 18.10.2026: Produkte im Testmodus. Beim Wechsel in den Live-Modus bekommen die Produkte
-// neue Varianten-IDs und Kauf-Links – dann hier nachtragen.
+// Verkauf über Polar (polar.sh, Organisation „nexray-prompter“). Polar ist Händler (Merchant of Record),
+// kümmert sich um Rechnung und Mehrwertsteuer und liefert die Lizenzschlüssel aus.
+// Stand 29.10.2026: Produkte, Lizenz-Benefits, Kauf-Links und Rabatt START20 angelegt.
 export const LICENSE = {
-  // Store-ID aus Lemon Squeezy (Settings → Stores). Schlüssel anderer Shops werden abgelehnt.
-  storeId: 500874,
-  // Varianten-ID → Tarif. billing bestimmt, wie lange Pro ohne Internet weiterläuft.
-  variants: {
-    2263422: { plan: 'pro', billing: 'month' }, // Pro monatlich 7,99 €
-    2263431: { plan: 'pro', billing: 'year' }, // Pro jährlich 71,91 €
-    2263460: { plan: 'business', billing: 'year' }, // Business jährlich 399 €, 20 Geräte
+  organizationId: '638221a5-e7c1-430d-80dc-31d66664a450',
+  // Benefit-ID (Lizenzschlüssel je Produkt) → Tarif. billing bestimmt, wie lange Pro ohne Internet weiterläuft.
+  benefits: {
+    '9389e1b3-a396-4b09-916b-07d164ce4bf8': { plan: 'pro', billing: 'month' }, // Pro monatlich 7,99 €, 3 Geräte
+    '08d361d4-ca63-454c-866f-fef9798beb36': { plan: 'pro', billing: 'year' }, // Pro jährlich 71,91 €, 3 Geräte
+    'c8d59c74-b62d-4030-81f7-ae5e39a8d675': { plan: 'business', billing: 'year' }, // Business 399 €/Jahr, 20 Geräte
   },
-  // Kauf-Links (Lemon Squeezy → Products → Share). Monat und Jahr wählt der Kunde an der Kasse.
+  // Kauf-Links (Polar → Products → Checkout Links). Monat und Jahr wählt der Kunde an der Kasse.
   buy: {
-    month: 'https://nexray.lemonsqueezy.com/checkout/buy/be38ae47-c133-4b11-bf06-998dfa87178c',
-    year: 'https://nexray.lemonsqueezy.com/checkout/buy/be38ae47-c133-4b11-bf06-998dfa87178c',
+    month: 'https://buy.polar.sh/polar_cl_4nrs6Rc7KHcYBOyDdCQ61gpsuxhrc7ainHoN54XfqQP',
+    year: 'https://buy.polar.sh/polar_cl_4nrs6Rc7KHcYBOyDdCQ61gpsuxhrc7ainHoN54XfqQP',
   },
-  business: 'https://nexray.lemonsqueezy.com/checkout/buy/3e8b0273-c1a8-4506-a31c-4d2a6c141d73',
+  business: 'https://buy.polar.sh/polar_cl_uqjShlWmFG90zQ7XtQdxX9Kvo5PgSRN4feGPG3Ccbj9',
+  // Kundenportal: Abo verwalten, Rechnungen, Geräte abmelden.
+  portal: 'https://polar.sh/nexray-prompter/portal',
 };

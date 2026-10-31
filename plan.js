@@ -1,4 +1,4 @@
-// Gratis- und Pro-Version. Kauf über Lemon Squeezy, Freischaltung per Lizenzschlüssel.
+// Gratis- und Pro-Version. Kauf über Polar, Freischaltung per Lizenzschlüssel.
 // Nach der einmaligen Freischaltung läuft Pro ohne Internet weiter; ist Internet da, prüft das
 // Programm die Lizenz gelegentlich im Hintergrund (etwa ob ein Abo gekündigt wurde).
 import { load, save } from './storage.js';
@@ -8,7 +8,8 @@ const PRICE_MONTH = 7.99;
 const YEAR_DISCOUNT = 0.25;
 export const FREE_VOICE_SECONDS = 5 * 60;
 
-const API = 'https://api.lemonsqueezy.com/v1/licenses/';
+// Öffentliche Lizenz-Schnittstelle von Polar (ohne Zugangsschlüssel, für Programme beim Kunden gedacht).
+const API = 'https://api.polar.sh/v1/customer-portal/license-keys/';
 const DAY = 24 * 60 * 60 * 1000;
 // Höchstens einmal am Tag im Hintergrund prüfen.
 const CHECK_EVERY = DAY;
@@ -51,9 +52,9 @@ function showPlan() {
   document.body.classList.toggle('pro', isPro());
 }
 
-/* ---------- Lemon Squeezy ---------- */
+/* ---------- Polar ---------- */
 
-const configured = () => LICENSE.storeId > 0 && Object.keys(LICENSE.variants).length > 0;
+const configured = () => Boolean(LICENSE.organizationId) && Object.keys(LICENSE.benefits).length > 0;
 
 function deviceName() {
   const platform = window.vpDesktop?.platform;
@@ -65,22 +66,24 @@ function deviceName() {
 async function call(action, params) {
   const response = await fetch(API + action, {
     method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(params),
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ organization_id: LICENSE.organizationId, ...params }),
   });
   let data = {};
   try {
     data = await response.json();
-  } catch { /* leere Antwort */ }
+  } catch { /* leere Antwort, z. B. 204 beim Abmelden */ }
   return { status: response.status, data };
 }
 
-function errorText(error = '') {
-  if (/not found/i.test(error)) return 'Diesen Lizenzschlüssel gibt es nicht. Bitte prüfe die Eingabe.';
-  if (/activation limit/i.test(error)) return 'Dieser Schlüssel ist bereits auf der erlaubten Zahl von Geräten aktiv. Entferne ihn zuerst auf einem anderen Gerät.';
-  if (/expired/i.test(error)) return 'Diese Lizenz ist abgelaufen.';
-  if (/disabled/i.test(error)) return 'Diese Lizenz wurde deaktiviert.';
-  return error ? `Freischaltung fehlgeschlagen: ${error}` : 'Freischaltung fehlgeschlagen.';
+// Polar antwortet mit 404 (Schlüssel unbekannt) oder 403 (gesperrt, abgelaufen, Gerätelimit).
+function errorText(status, data = {}) {
+  const detail = typeof data.detail === 'string' ? data.detail : '';
+  if (status === 404) return 'Diesen Lizenzschlüssel gibt es nicht. Bitte prüfe die Eingabe.';
+  if (/limit/i.test(detail)) return 'Dieser Schlüssel ist bereits auf der erlaubten Zahl von Geräten aktiv. Entferne ihn zuerst auf einem anderen Gerät.';
+  if (/expired/i.test(detail)) return 'Diese Lizenz ist abgelaufen.';
+  if (/revoked|disabled/i.test(detail) || status === 403) return 'Diese Lizenz wurde deaktiviert.';
+  return detail ? `Freischaltung fehlgeschlagen: ${detail}` : 'Freischaltung fehlgeschlagen.';
 }
 
 const OFFLINE_TEXT = 'Keine Internetverbindung. Zum Freischalten wird einmal kurz Internet benötigt.';
@@ -91,26 +94,26 @@ export async function activate(rawKey) {
   if (!configured()) return { ok: false, message: 'Der Verkauf startet in Kürze – Lizenzschlüssel werden noch nicht angenommen.' };
   let result;
   try {
-    result = await call('activate', { license_key: key, instance_name: deviceName() });
+    result = await call('activate', { key, label: deviceName() });
   } catch {
     return { ok: false, message: OFFLINE_TEXT };
   }
-  const { data } = result;
-  if (!data.activated) return { ok: false, message: errorText(data.error) };
-  const variant = LICENSE.variants[data.meta?.variant_id];
-  if (data.meta?.store_id !== LICENSE.storeId || !variant) {
+  const { status, data } = result;
+  if (status !== 200 || !data.id) return { ok: false, message: errorText(status, data) };
+  const benefit = LICENSE.benefits[data.license_key?.benefit_id];
+  if (data.license_key?.organization_id !== LICENSE.organizationId || !benefit) {
     // Schlüssel eines anderen Produkts: das Gerät dort gleich wieder abmelden.
-    call('deactivate', { license_key: key, instance_id: data.instance?.id }).catch(() => {});
+    call('deactivate', { key, activation_id: data.id }).catch(() => {});
     return { ok: false, message: 'Dieser Schlüssel gehört nicht zu NEXRAY Prompter.' };
   }
   license = {
     key,
-    instance: data.instance.id,
-    plan: variant.plan,
-    billing: variant.billing,
-    status: data.license_key?.status || 'active',
+    instance: data.id,
+    plan: benefit.plan,
+    billing: benefit.billing,
+    status: data.license_key.status === 'granted' ? 'active' : data.license_key.status,
     checked: Date.now(),
-    email: data.meta?.customer_email || '',
+    email: data.license_key.customer?.email || '',
   };
   save('vp.license', license);
   changed();
@@ -122,18 +125,19 @@ async function recheck(force = false) {
   if (!license || (!force && Date.now() - license.checked < CHECK_EVERY)) return;
   let result;
   try {
-    result = await call('validate', { license_key: license.key, instance_id: license.instance });
+    result = await call('validate', { key: license.key, activation_id: license.instance });
   } catch {
     return;
   }
   if (result.status >= 500 || result.status === 429) return;
   const wasActive = licenseActive();
-  const { data } = result;
-  if (data.valid && data.license_key?.status === 'active') {
+  const { status, data } = result;
+  if (status === 200 && data.status === 'granted') {
     license.status = 'active';
     license.checked = Date.now();
   } else {
-    license.status = data.license_key?.status || 'invalid';
+    // 404: Schlüssel oder Gerät unbekannt; sonst gesperrt bzw. Abo beendet.
+    license.status = status === 200 ? data.status || 'invalid' : 'invalid';
   }
   save('vp.license', license);
   changed();
@@ -145,9 +149,9 @@ async function recheck(force = false) {
 export async function removeLicense() {
   if (!license) return { ok: true };
   try {
-    const { status, data } = await call('deactivate', { license_key: license.key, instance_id: license.instance });
-    // Ist der Schlüssel dort schon unbekannt, darf er hier trotzdem weg.
-    if (!data.deactivated && status < 500 && status !== 404) return { ok: false, message: errorText(data.error) };
+    const { status, data } = await call('deactivate', { key: license.key, activation_id: license.instance });
+    // 204 = abgemeldet. Ist der Schlüssel dort schon unbekannt (404), darf er hier trotzdem weg.
+    if (status !== 204 && status !== 404) return { ok: false, message: errorText(status, data) };
   } catch {
     return { ok: false, message: 'Zum Entfernen wird kurz Internet benötigt, damit der Platz für ein anderes Gerät frei wird.' };
   }
